@@ -1,4 +1,4 @@
-import { UserEntity } from 'src/modules/authentication/entities/user.entity';
+import { UserEntity } from 'src/modules/user/entities/user.entity';
 import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
 
 @Entity('feed_post')
@@ -7,7 +7,7 @@ export class FeedEntity {
   id: string;
 
   @Column()
-  post: string;
+  body: string;
 
   @CreateDateColumn()
   createdAt: string;

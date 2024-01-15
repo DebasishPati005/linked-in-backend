@@ -1,19 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserDto, LogInUserDto } from './dto';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { LoginUserRequest } from './dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserEntity } from './entities/user.entity';
-import { Observable, from } from 'rxjs';
+import { Observable, from, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import * as bcrypt from 'bcrypt';
-import { UserResponse } from './interfaces/create-user.response';
 import { JwtService } from '@nestjs/jwt';
+import { CONSTANT_STRINGS } from 'src/common/constant';
+import { UserEntity } from '../user/entities/user.entity';
+import { CreateUserRequest } from '../user/dto';
+import { UserResponse } from '../user/types';
+import { SignupResponse } from './types';
 
 @Injectable()
 export class AuthenticationService {
   constructor(
     @InjectRepository(UserEntity)
-    private authenticationRepository: Repository<UserEntity>,
+    private userRepository: Repository<UserEntity>,
     private jwtService: JwtService,
   ) {}
 
@@ -25,34 +28,62 @@ export class AuthenticationService {
     return from(bcrypt.compare(password, hashedPassword));
   };
 
-  createUser(createUserDto: CreateUserDto): Observable<UserResponse> {
-    // return from(this.authenticationRepository.save(createUserDto));
-    return this.generateHash(createUserDto.password).pipe(
-      switchMap((hashedPassword: string): Observable<UserResponse> => {
-        return from(
-          this.authenticationRepository.save({
-            ...createUserDto,
-            hash: hashedPassword,
-          }),
-        ).pipe(
-          map((user: UserResponse) => {
-            delete user.hash;
-            delete user.password;
-            delete user.id;
-            return user;
+  findUser(email: string): Observable<UserEntity | null> {
+    return from(
+      this.userRepository.findOne({
+        where: { email },
+      }),
+    ).pipe(
+      switchMap((user) => {
+        if (!user) {
+          return of(null);
+        }
+        return of(user);
+      }),
+    );
+  }
+
+  signupUser(signUpRequest: CreateUserRequest): Observable<SignupResponse> {
+    return this.findUser(signUpRequest.email).pipe(
+      switchMap((user) => {
+        if (user) {
+          throw new HttpException(
+            { message: CONSTANT_STRINGS.recordExists, status: HttpStatus.BAD_REQUEST },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        return this.generateHash(signUpRequest.password).pipe(
+          switchMap((hashedPassword: string): Observable<UserResponse> => {
+            return from(
+              this.userRepository.save({
+                ...signUpRequest,
+                hash: hashedPassword,
+              }),
+            ).pipe(
+              map((user: any) => {
+                delete user.hash;
+                delete user.role;
+                delete user.password;
+                delete user.confirmPassword;
+                delete user.id;
+                return user;
+              }),
+            );
           }),
         );
       }),
     );
   }
 
-  validateUser(loginUserDto: LogInUserDto): Observable<UserEntity> {
-    return from(
-      this.authenticationRepository.findOne({
-        where: { email: loginUserDto.email },
-      }),
-    ).pipe(
+  validateUser(loginUserDto: LoginUserRequest): Observable<UserEntity> {
+    return this.findUser(loginUserDto.email).pipe(
       switchMap((user) => {
+        if (!user) {
+          throw new HttpException(
+            { message: CONSTANT_STRINGS.invalidCredentialErrorMessage, status: HttpStatus.NOT_FOUND },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
         return this.verifyUserPassword(loginUserDto.password, user.hash).pipe(
           map((doesUserExist) => {
             if (doesUserExist) {
@@ -65,19 +96,21 @@ export class AuthenticationService {
     );
   }
 
-  loginUser(loginUserDto: LogInUserDto): Observable<Promise<{ token?: string } | { error: string }>> {
+  loginUser(loginUserDto: LoginUserRequest): Observable<Promise<{ token?: string }>> {
     return this.validateUser(loginUserDto).pipe(
       map(async (existingUser) => {
         if (!existingUser) {
-          return { error: 'Invalid email or password' };
+          throw new HttpException(
+            { message: CONSTANT_STRINGS.userErrorMessage, status: HttpStatus.UNAUTHORIZED },
+            HttpStatus.UNAUTHORIZED,
+          );
         }
         return {
           token: await this.jwtService.signAsync(
             {
-              sub: existingUser.id,
-              email: existingUser.email,
+              user: existingUser,
             },
-            { secret: process.env.JWT_SECRET, expiresIn: 3600 },
+            { secret: process.env.JWT_SECRET, expiresIn: process.env.JWT_EXPIRATION_TIME },
           ),
         };
       }),

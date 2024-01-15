@@ -4,6 +4,11 @@ import { AuthenticationModule } from './modules/authentication/authentication.mo
 import { FeedModule } from './modules/feed/feed.module';
 import { Environment } from './env/env';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserModule } from './modules/user/user.module';
+import { MulterModule } from '@nestjs/platform-express';
+import { APP_FILTER } from '@nestjs/core';
+import { ErrorFilter } from './common/error-filter';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -11,6 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       envFilePath: [new Environment().getEnvFilePath()],
       isGlobal: true,
     }),
+    MulterModule.register({ dest: '/images' }),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: process.env.DATABASE_HOST,
@@ -23,6 +29,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     }),
     FeedModule,
     AuthenticationModule,
+    UserModule,
+    ChatModule,
+  ],
+  providers: [
+    {
+      provide: APP_FILTER,
+      useClass: ErrorFilter,
+    },
   ],
 })
 export class AppModule {}
