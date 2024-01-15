@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:prod": "npm install",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node ./dist/main.js",
     "start:dev": "nest start --watch",
@@ -39,7 +40,7 @@
     "mysql2": "^3.6.2",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
-    "pg": "^8.7.1",
+    "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.3",
