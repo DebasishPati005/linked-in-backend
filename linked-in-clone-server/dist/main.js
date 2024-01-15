@@ -27,6 +27,7 @@ async function bootstrap() {
     const document = swagger_1.SwaggerModule.createDocument(app, config);
     swagger_1.SwaggerModule.setup('api-docs', app, document);
     app.use(morgan('tiny', { stream: apiLogStream }));
+    console.log("app has started");
     await app.listen(process.env.SERVER_PORT);
 }
 bootstrap();

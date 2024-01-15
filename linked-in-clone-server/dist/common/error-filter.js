@@ -33,6 +33,7 @@ let ErrorFilter = class ErrorFilter {
         const request = context.getRequest();
         let errorMessage = constant_1.CONSTANT_STRINGS.defaultErrorMessage;
         let erroStatus = common_1.HttpStatus.INTERNAL_SERVER_ERROR;
+        console.log(exception);
         if (exception instanceof common_1.HttpException) {
             erroStatus = exception.getStatus();
             const errorResponse = exception.getResponse();
